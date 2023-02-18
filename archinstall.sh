@@ -35,8 +35,9 @@ function checkefivars() {
 
     if [ $? -ne 0 ]; then
         echo -e "${RED}${BOLD}[!] ${RESET}Installation Failed: No EFI variables have been found under $EfiVarsPath. Make sure you are booting using UEFI instead of BIOS or Legacy Mode"
+        exit 1
     else
-        echo "works!"
+        clear
     fi
 }
 
