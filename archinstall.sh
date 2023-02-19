@@ -15,6 +15,9 @@ UNDERLINE='\033[4m'
 BLINK='\033[5m'
 RESET='\033[0m'
 
+HIDECURSOR="\e[?25l"
+SHOWCURSOR='\e[?25h'
+
 #Default Variables
 
 EfiVarsPath="/sys/firmware/efi/efivars"
@@ -48,9 +51,18 @@ Partitions=0
 FsMount=0
 Language=0
 Network=0
+Users=0
+Sudo=0
 #other
 
 #Vital Functions
+
+function cleanup() {
+  echo -e "${SHOWCURSOR}"
+}
+
+trap cleanup SIGINT
+trap cleanup EXIT
 
 uncomment_string() {
     local str="$1"
@@ -108,7 +120,6 @@ function set_installation_disk() {
   
       # Get the size of the disk in bytes
       size_bytes=$(blockdev --getsize64 $disk)
-
       # Convert the size to GB or MB
       if [[ $size_bytes -gt 1073741824 ]]; then
         size=$(echo "scale=2;$size_bytes/1073741824" | bc)
@@ -174,6 +185,7 @@ function additional_parameters() {
     echo -e "${GREEN}${BOLD}[*] ${RESET}Specify the following parameters for the installation. ${RED}${BOLD}Syntax: ${RESET}<Language (es - en, etc)>_<Country (AR - US, etc)>.\n"
     read -p "Language:" LANGUAGE
     clear
+    echo -e "${HIDECURSOR}"
     installer_banner
     echo -e "${GREEN}${BOLD}[*] ${RESET}Starting Arch Linux Installation ${GREEN}${BOLD}<= ${RESET}${YELLOW}In Progress...\n"
     sleep 2
@@ -293,6 +305,8 @@ function chroot_various() {
   else
     tput cuu1
     tput ed
+    #tput civis
+    #tput cnorm
     echo -e "${GREEN}${BOLD}     [*] ${RESET}Language Configuration"
   fi
 }
@@ -306,12 +320,53 @@ function net_config() {
   append_to_file "::1           localhost" "${hostspath}"
   append_to_file "127.0.1.1     ${HOSTNAME}.localhost     ${HOSTNAME}" "${hostspath}"
   Network+=$?
+  sleep 3
   if [ $Network -ne 0 ]; then
     echo -e "${RED}${BOLD}     [*] ${RESET}Network Configuration ${RED}${BOLD}<= Errors Ocurred"
     exit 1
   else
+    tput cuu1
+    tput ed
     echo -e "${GREEN}${BOLD}     [*] ${RESET}Network Configuration"
   fi
+}
+
+function create_users() {
+  echo -e "${YELLOW}${BOLD}     [*] ${RESET}Configuring Users..."
+  arch-chroot /mnt bash -c "echo 'root:${rPASSWORD}' | chpasswd >/dev/null 2>&1"
+  Users+=$?
+  arch-chroot /mnt bash -c "useradd -m ${USERNAME} >/dev/null 2>&1"
+  Users+=$?
+  arch-chroot /mnt bash -c "echo '${USERNAME}:${uPASSWORD}' | chpasswd >/dev/null 2>&1"
+  Users+=$?
+  arch-chroot /mnt bash -c "usermod -aG wheel,audio,video,optical,storage ${USERNAME} >/dev/null 2>&1"
+  Users+=$?
+  sleep 3
+  if ( $Users -ne 0); then
+    echo -e "${RED}${BOLD}     [*] ${RESET}User Configuration ${RED}${BOLD}<= Errors Ocurred"
+    exit 1
+  else
+    tput cuu1
+    tput cuu1
+    tput ed
+    echo -e "${GREEN}${BOLD}     [*] ${RESET}User Configuration"
+  fi
+}
+
+function install_sudo() {
+  echo -e "${YELLOW}${BOLD}     [*] ${RESET}Installing Sudo..."
+  arch-chroot /mnt bash -c "pacman -S sudo" #>/dev/null 2>&1
+  sleep 2
+  Sudo=$?
+  if [ Sudo -ne 0 ]; then
+    echo -e "${RED}${BOLD}     [*] ${RESET}Sudo Installation ${RED}${BOLD}<= Errors Ocurred"
+    exit 1
+  else
+    tput cuu1
+    tput ed
+    echo -e "${GREEN}${BOLD}     [*] ${RESET}Network Configuration"
+  fi
+
 }
 
 checkefivars
@@ -331,6 +386,8 @@ elif [ "$InstallationType" -eq 2 ]; then
   create_fstab
   chroot_various
   net_config
+  create_users
+  #install_sudo
   read
 else
   clear
