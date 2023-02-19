@@ -18,9 +18,9 @@ RESET='\033[0m'
 #Default Variables
 
 EfiVarsPath="/sys/firmware/efi/efivars"
-EfiPartitionSize="+550M"
-SwapPartitionSize="+4G"
-RootPartitionSize="+125G"
+dEfiPartitionSize="+550M"
+dSwapPartitionSize="+4G"
+dRootPartitionSize="+125G"
 
 #Installation Mode
 
@@ -39,6 +39,7 @@ Partitions=0
 #Vital Functions
 
 function checkefivars() {
+    clear
     echo -e "${GREEN}[*] ${WHITE}${BOLD}Checking EFI Variables ${RESET}${GREEN}${BOLD}<= ${RESET}${YELLOW}in progress..."
     ls $EfiVarsPath > /dev/null
     sleep 2
@@ -50,7 +51,7 @@ function checkefivars() {
     else
         clear
         echo -e "${GREEN}[*] ${WHITE}${BOLD}Checking EFI Variables ${RESET}${GREEN}${BOLD}<= ${RESET}${GREEN}Done."
-        sleep 5
+        sleep 2
         clear
     fi
 }
@@ -66,20 +67,56 @@ function defaultprompt() {
     read -p "Select the propper installation method: " InstallationType
 }
 
-function get_disks() {
-    local disks=()
-    while read -r line; do
-      if [[ $line =~ ^Disk\ /dev/.*:.*$ ]]; then
-      disks+=("${line/Disk \/dev\//}")
-    fi
-    done < <(fdisk -l > /dev/null)
-    #echo "${disks[@]}"
-}
-
 function set_installation_disk() {
-    disks=($(get_disks))
-    echo "Disks: ${disks[*]}\n\n"
-    read -e -p "${GREEN}${BOLD}[*]${RESET}Insert the disk name where you want to install Arch Linux. ${RED}${BOLD}Note: ${RESET}The entire disk will be formatted."
+    disks=$(fdisk -l | grep -oP '/dev/\w+')
+
+    # Loop through each disk
+    for disk in $disks
+    do
+      # Ignore loop devices
+      if [[ "$disk" == *loop* ]]; then
+        continue
+      fi
+  
+      # Get the size of the disk in bytes
+      size_bytes=$(blockdev --getsize64 $disk)
+
+      # Convert the size to GB or MB
+      if [[ $size_bytes -gt 1073741824 ]]; then
+        size=$(echo "scale=2;$size_bytes/1073741824" | bc)
+        size="$size GB"
+      else
+        size=$(echo "scale=2;$size_bytes/1048576" | bc)
+        size="$size MB"
+      fi
+  
+      # Print the disk name and size
+      echo -e "${CYAN}${BOLD}Disk       Size \n${RESET}$disk   $size\n\n"
+    done
+    echo -e "${GREEN}${BOLD}[*]${RESET}Insert the disk name where you want to install Arch Linux. ${RED}${BOLD}Note: ${RESET}The entire disk will be formatted.\n"
+    read -p "Disk: " InstallationDisk
+    clear
+    echo -e "${GREEN}${BOLD}[*]${RESET}Specify the partition sizes for the installation. ${RED}${BOLD}Note: ${RESET}Leave empty if you want to use the default values.\n"
+    read -p "Efi Partition (default +550M): " EfiSize
+    clear
+    echo -e "${GREEN}${BOLD}[*]${RESET}Specify the partition sizes for the installation. ${RED}${BOLD}Note: ${RESET}Leave empty if you want to use the default values.\n"
+    read -p "Swap Partition (default +4G): " SwapSize
+    clear
+    echo -e "${GREEN}${BOLD}[*]${RESET}Specify the partition sizes for the installation. ${RED}${BOLD}Note: ${RESET}Leave empty if you want to use the default values.\n"
+    read -p "Root Partition (default +125G): " RootSize
+    clear
+
+    if [ ${#EfiSize} -ne 0 ]; then
+      dEfiPartitionSize="$EfiSize"
+    fi
+    if [ ${#SwapSize} -ne 0 ]; then
+      dSwapPartitionSize="$SwapSize"
+    fi
+    if [ ${#RootSize} -ne 0 ]; then
+      dRootPartitionSize="$RootSize"
+    fi
+
+    echo "$dEfiPartitionSize ; $dSwapPartitionSize ; $dRootPartitionSize"
 }
 
 
@@ -94,7 +131,6 @@ elif [ "$InstallationType" -eq 2 ]; then
   clear
   installer_banner
   set_installation_disk
-  sleep 60
 else
   clear
   defaultprompt
