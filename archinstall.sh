@@ -38,15 +38,31 @@ uPASSWORD=""
 rPASSWORD=""
 HOSTNAME=""
 BOOTLOADERID=""
+TIMEZONE=""
+LANGUAGE=""
 
 #Installer Steps
 
 EfiVars=0 #this values are filled with $? variable -> to catch errors in the steps
 Partitions=0
 FsMount=0
+Language=0
+Network=0
 #other
 
 #Vital Functions
+
+uncomment_string() {
+    local str="$1"
+    local path="$2"
+    arch-chroot /mnt bash -c "sed -i 's/^#*\s*\(${str}\)/\1/' '${path}'"
+}
+
+function append_to_file() {
+    local text="$1"
+    local file_path="$2"
+    arch-chroot /mnt bash -c "echo '$text' >> '$file_path'"
+}
 
 function checkefivars() {
     clear
@@ -151,6 +167,14 @@ function additional_parameters() {
     read -p "Bootloader ID:" USERNAME
     clear
     installer_banner
+    echo -e "${GREEN}${BOLD}[*] ${RESET}Specify the following parameters for the installation. ${RED}${BOLD}Syntax: ${RESET}<Region>/<City>.\n"
+    read -p "Time Zone:" TIMEZONE
+    clear
+    installer_banner
+    echo -e "${GREEN}${BOLD}[*] ${RESET}Specify the following parameters for the installation. ${RED}${BOLD}Syntax: ${RESET}<Language (es - en, etc)>_<Country (AR - US, etc)>.\n"
+    read -p "Language:" LANGUAGE
+    clear
+    installer_banner
     echo -e "${GREEN}${BOLD}[*] ${RESET}Starting Arch Linux Installation ${GREEN}${BOLD}<= ${RESET}${YELLOW}In Progress...\n"
     sleep 2
 }
@@ -241,7 +265,54 @@ function create_fstab() {
   fi
 }
 
-#Script Logic
+function chroot_various() {
+  echo -e "${BLUE}${BOLD}   => ${RESET}arch-chroot Shell Enviroment"
+  echo -e "${YELLOW}${BOLD}     [*] ${RESET}Configuring Time Zone..."
+  arch-chroot /mnt bash -c "ln -sf /usr/share/zoneinfo/${TIMEZONE} /etc/localtime >/dev/null 2>&1; hwclock --systohc >/dev/null 2>&1"
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}${BOLD}     [*] ${RESET}Time Zone ${RED}${BOLD}<= Errors Ocurred"
+    exit 1
+  else
+    tput cuu1
+    tput ed
+    echo -e "${GREEN}${BOLD}     [*] ${RESET}Time Zone"
+  fi
+  echo -e "${YELLOW}${BOLD}     [*] ${RESET}Configuring Language..."
+  uncomment_string "${LANGUAGE}.UTF-8 UTF-8" "/etc/locale.gen"
+  Language+=$?
+
+  arch-chroot /mnt bash -c "locale-gen >/dev/null 2>&1"
+  Language+=$?
+
+  append_to_file "LANG=${LANGUAGE}.UTF-8" "/etc/locale.conf"
+  Language+=$?
+
+  if [ $Language -ne 0 ]; then
+    echo -e "${RED}${BOLD}     [*] ${RESET}Language Configuration ${RED}${BOLD}<= Errors Ocurred"
+    exit 1
+  else
+    tput cuu1
+    tput ed
+    echo -e "${GREEN}${BOLD}     [*] ${RESET}Language Configuration"
+  fi
+}
+
+function net_config() {
+  echo -e "${YELLOW}${BOLD}     [*] ${RESET}Configuring Network Settings..."
+  append_to_file "${HOSTNAME}" "/etc/hostname"
+  Network+=$?
+  hostspath="/etc/hosts"
+  append_to_file "127.0.0.1     localhost" "${hostspath}"
+  append_to_file "::1           localhost" "${hostspath}"
+  append_to_file "127.0.1.1     ${HOSTNAME}.localhost     ${HOSTNAME}" "${hostspath}"
+  Network+=$?
+  if [ $Network -ne 0 ]; then
+    echo -e "${RED}${BOLD}     [*] ${RESET}Network Configuration ${RED}${BOLD}<= Errors Ocurred"
+    exit 1
+  else
+    echo -e "${GREEN}${BOLD}     [*] ${RESET}Network Configuration"
+  fi
+}
 
 checkefivars
 defaultprompt
@@ -258,6 +329,8 @@ elif [ "$InstallationType" -eq 2 ]; then
   mount_fs
   install_kernel
   create_fstab
+  chroot_various
+  net_config
   read
 else
   clear
