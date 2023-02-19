@@ -26,6 +26,10 @@ RootPartitionSize="+125G"
 
 InstallationType=0
 
+#Installation Disk
+
+InstallationDisk=""
+
 #Installer Steps
 
 EfiVars=0
@@ -35,7 +39,7 @@ Partitions=0
 #Vital Functions
 
 function checkefivars() {
-    echo -e "${GREEN}[*] ${WHITE}${BOLD}Checking EFI Variables ${RESET}${GREEN}${BOLD}${BLINK}<= ${RESET}${YELLOW}in progress..."
+    echo -e "${GREEN}[*] ${WHITE}${BOLD}Checking EFI Variables ${RESET}${GREEN}${BOLD}<= ${RESET}${YELLOW}in progress..."
     ls $EfiVarsPath > /dev/null
     sleep 2
 
@@ -51,12 +55,35 @@ function checkefivars() {
     fi
 }
 
-function defaultprompt() {
+function installer_banner() {
     echo -e "${CYAN}${BOLD}=========== Automatic Arch Linux Installation ===========${RESET}\n\n"
+}
+
+function defaultprompt() {
+    installer_banner
     echo -e "${WHITE}[1] Encrypted Installation"
     echo -e "${WHITE}[2] Normal Installation\n"
-    echo -e "${WHITE}Select the propper installation method.${RESET}"; read InstallationType
+    read -p "Select the propper installation method: " InstallationType
 }
+
+function get_disks() {
+    local disks=()
+    while read -r line; do
+      if [[ $line =~ ^Disk\ /dev/.*:.*$ ]]; then
+      disks+=("${line/Disk \/dev\//}")
+    fi
+    done < <(fdisk -l > /dev/null)
+    #echo "${disks[@]}"
+}
+
+function set_installation_disk() {
+    disks=($(get_disks))
+    echo "Disks: ${disks[@]}"
+    read -p "${GREEN}${BOLD}[*]${RESET}Insert the disk name where you want to install Arch Linux. ${RED}${BOLD}Note: ${RESET}The entire disk will be formatted."
+}
+
+
+#Script Logic
 
 checkefivars
 defaultprompt
@@ -64,7 +91,10 @@ defaultprompt
 if [ "$InstallationType" -eq 1 ]; then
   echo "The number is one."
 elif [ "$InstallationType" -eq 2 ]; then
-  echo "The number is two."
+  clear
+  installer_banner
+  set_installation_disk
+  sleep 60
 else
   clear
   defaultprompt
