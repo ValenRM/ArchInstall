@@ -21,6 +21,7 @@ EfiVarsPath="/sys/firmware/efi/efivars"
 dEfiPartitionSize="+550M"
 dSwapPartitionSize="+4G"
 dRootPartitionSize="+125G"
+BootFolder="/mnt/boot"
 
 #Installation Mode
 
@@ -42,6 +43,7 @@ BOOTLOADERID=""
 
 EfiVars=0 #this values are filled with $? variable -> to catch errors in the steps
 Partitions=0
+FsMount=0
 #other
 
 #Vital Functions
@@ -191,6 +193,54 @@ function create_partitons() {
     fi
 }
 
+
+function mount_fs() {
+  echo -e "${YELLOW}${BOLD}[*] ${RESET}Mounting File System..."
+  mount ${InstallationDisk}3 /mnt #> /dev/null 2>&1
+  FsMount+=$?
+  sleep 1
+  mkdir $BootFolder
+  FsMount+=$?
+  mount ${InstallationDisk}1 $BootFolder #> /dev/null 2>&1
+  FsMount+=$?
+
+  if [ $FsMount -ne 0 ]; then
+    echo -e "${RED}${BOLD}[*] ${RESET}File System Mount ${RED}${BOLD}<= Errors Ocurred"
+    exit 1
+  else
+    tput cuu1
+    tput ed
+    echo -e "${GREEN}${BOLD}[*] ${RESET}File System Mount"
+  fi
+}
+
+function install_kernel() {
+  echo -e "${YELLOW}${BOLD}[*] ${RESET}Installing Linux Kernel..."
+  pacstrap -K /mnt base linux linux-firmware >/dev/null 2>&1
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}${BOLD}[*] ${RESET}Linux Kernel Installation ${RED}${BOLD}<= Errors Ocurred"
+    exit 1
+  else
+    tput cuu1
+    tput ed
+    echo -e "${GREEN}${BOLD}[*] ${RESET}Linux Kernel Installation"
+  fi
+}
+
+function create_fstab() {
+  echo -e "${YELLOW}${BOLD}[*] ${RESET}Creating FsTab..."
+  genfstab -U /mnt > /mnt/etc/fstab >/dev/null 2>&1
+  sleep 1
+    if [ $? -ne 0 ]; then
+    echo -e "${RED}${BOLD}[*] ${RESET}FsTab ${RED}${BOLD}<= Errors Ocurred"
+    exit 1
+  else
+    tput cuu1
+    tput ed
+    echo -e "${GREEN}${BOLD}[*] ${RESET}FsTab"
+  fi
+}
+
 #Script Logic
 
 checkefivars
@@ -205,6 +255,10 @@ elif [ "$InstallationType" -eq 2 ]; then
   additional_parameters
   #starting installation
   create_partitons
+  mount_fs
+  install_kernel
+  create_fstab
+  read
 else
   clear
   defaultprompt
