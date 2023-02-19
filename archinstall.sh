@@ -78,8 +78,8 @@ function get_disks() {
 
 function set_installation_disk() {
     disks=($(get_disks))
-    echo "Disks: ${disks[@]}"
-    read -p "${GREEN}${BOLD}[*]${RESET}Insert the disk name where you want to install Arch Linux. ${RED}${BOLD}Note: ${RESET}The entire disk will be formatted."
+    echo "Disks: ${disks[*]}\n\n"
+    read -e -p "${GREEN}${BOLD}[*]${RESET}Insert the disk name where you want to install Arch Linux. ${RED}${BOLD}Note: ${RESET}The entire disk will be formatted."
 }
 
 
