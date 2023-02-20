@@ -354,19 +354,21 @@ function create_users() {
 }
 
 function install_sudo() {
-  echo -e "${YELLOW}${BOLD}     [*] ${RESET}Installing Sudo..."
-  arch-chroot /mnt bash -c "pacman -S sudo" #>/dev/null 2>&1
-  sleep 2
-  Sudo=$?
+  echo -e "${YELLOW}${BOLD}     [*] ${RESET}Configuring Sudo..."
+  arch-chroot /mnt bash -c "pacman -q --noconfirm -S sudo > /dev/null 2>&1"
+  sleep 5
+  Sudo+=$?
+  uncomment_string "%wheel ALL=(ALL:ALL) ALL" "/etc/sudoers"
+  sleep 1
+  Sudo+=$?
   if [ Sudo -ne 0 ]; then
-    echo -e "${RED}${BOLD}     [*] ${RESET}Sudo Installation ${RED}${BOLD}<= Errors Ocurred"
+    echo -e "${RED}${BOLD}     [*] ${RESET}Sudo Configuration ${RED}${BOLD}<= Errors Ocurred"
     exit 1
   else
     tput cuu1
     tput ed
-    echo -e "${GREEN}${BOLD}     [*] ${RESET}Network Configuration"
+    echo -e "${GREEN}${BOLD}     [*] ${RESET}Sudo Configuration"
   fi
-
 }
 
 checkefivars
@@ -387,7 +389,7 @@ elif [ "$InstallationType" -eq 2 ]; then
   chroot_various
   net_config
   create_users
-  #install_sudo
+  install_sudo
   read
 else
   clear
