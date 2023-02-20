@@ -53,6 +53,7 @@ Language=0
 Network=0
 Users=0
 Sudo=0
+Grub=0
 #other
 
 #Vital Functions
@@ -361,14 +362,61 @@ function install_sudo() {
   uncomment_string "%wheel ALL=(ALL:ALL) ALL" "/etc/sudoers"
   sleep 1
   Sudo+=$?
-  if [ Sudo -ne 0 ]; then
+  if [ $Sudo -ne 0 ]; then
     echo -e "${RED}${BOLD}     [*] ${RESET}Sudo Configuration ${RED}${BOLD}<= Errors Ocurred"
     exit 1
   else
     tput cuu1
+    tput cuu1
     tput ed
     echo -e "${GREEN}${BOLD}     [*] ${RESET}Sudo Configuration"
   fi
+}
+
+function install_grub() {
+  echo -e "${YELLOW}${BOLD}     [*] ${RESET}Installing Grub..."
+  arch-chroot /mnt bash -c "pacman -q --noconfirm -S grub efibootmgr dosfstools os-prober mtools networkmanager wpa_supplicant base-devel > /dev/null 2>&1"
+  Grub+=$?
+  arch-chroot /mnt bash -c "grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=${BOOTLOADERID} --recheck > /dev/null 2>&1" #TODO: Support USB Installs
+  Grub+=$?
+  arch-chroot /mnt bash -c "grub-mkconfig -o /boot/grub/grub.cfg > /dev/null 2>&1"
+  grub+=$?
+  if [ $Grub -ne 0 ]; then
+    echo -e "${RED}${BOLD}     [*] ${RESET}Grub Installation ${RED}${BOLD}<= Errors Ocurred"
+    exit 1
+  else
+    tput cuu1
+    tput ed
+    echo -e "${GREEN}${BOLD}     [*] ${RESET}Grub Installation"
+  fi
+}
+
+function installer_cleanup() {
+  echo -e "${YELLOW}${BOLD}[*] ${RESET}Cleaning Up..."
+  arch-chroot /mnt bash -c "systemctl enable NetworkManager > /dev/null 2>&1"
+  sleep 1
+  arch-chroot /mnt bash -c "systemctl enable wpa_supplicant.service > /dev/null 2>&1"
+  sleep 1
+  arch-chroot /mnt bash -c "timedatectl set-ntp true > /dev/null 2>&1"
+  sleep 1
+
+  umount -R /mnt > /dev/null 2>&1
+
+  tput cuu1
+  tput ed
+  echo -e "${GREEN}${BOLD}[*]${RESET}${GREEN} Done.\n"
+
+  read -p "Type r to reboot, or any key to exit the installer: " option
+
+  if [ $option -ne "r" ]; then
+    clear
+    exit 1
+  fi
+
+  clear
+  echo -e "${RED}${BOLD}Warning: ${RESET}Remove the installation media."
+  sleep 10
+  reboot 
 }
 
 checkefivars
@@ -390,13 +438,15 @@ elif [ "$InstallationType" -eq 2 ]; then
   net_config
   create_users
   install_sudo
-  read
+  install_grub
+  installer_cleanup
 else
   clear
   defaultprompt
 fi
 
 
-
-
-
+#TODO:
+#Sudo credentials match, but user is not being created (credentials mismatch)
+#Installer forces reboot
+#Support for USB installations
