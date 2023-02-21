@@ -38,16 +38,6 @@ InstallationType=0
 
 InstallationDisk=""
 
-#Installation Parameters
-
-USERNAME=""
-uPASSWORD=""
-rPASSWORD=""
-HOSTNAME=""
-BOOTLOADERID=""
-TIMEZONE=""
-LANGUAGE=""
-
 #Installer Steps
 
 EfiVars=0 #this values are filled with $? variable -> to catch errors in the steps
@@ -62,7 +52,7 @@ Grub=0
 
 #Vital Functions
 
-function error_handler {
+function error_handler() {
     echo -e "\n${RED}${BOLD}Error: ${RESET}Command ${GREEN}'$1'${RESET} ${RED}${BOLD}failed${RESET} with exit status code of ${RED}${BOLD}$2"
     exit 1
 }
@@ -76,7 +66,7 @@ function cleanup() {
 trap cleanup SIGINT
 trap cleanup EXIT
 
-uncomment_string() {
+function uncomment_string() {
     trap 'error_handler "$BASH_COMMAND" "$?"' ERR
     local str="$1"
     local path="$2"
