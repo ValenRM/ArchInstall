@@ -1,5 +1,5 @@
 # Automatic Arch Linux Installation Script
- This script runs all the commands listed under my [**Manual Arch Install**](https://github.com/ValenRM/ArchInstall) repo.
+ All of the commands listed in my [**Manual Arch Installation**](https://github.com/ValenRM/Arch-Installation-Commands) repository are executed by this script.
 
 # Script Tutorial
  **Steps:**
