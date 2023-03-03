@@ -282,11 +282,11 @@ function net_config() {
 function create_users() {
   trap 'error_handler "$BASH_COMMAND" "$?"' ERR
   echo -e "${YELLOW}${BOLD}     [*] ${RESET}Configuring Users..."
-  arch-chroot /mnt bash -c "echo 'root:${rPASSWORD}' | chpasswd >/dev/null 2>&1"
+  arch-chroot /mnt bash -c "echo 'root:${rPASSWORD}' | chpasswd > /dev/null 2>&1"
   sleep 1
   arch-chroot /mnt bash -c "useradd -m ${USERNAME} && echo '${USERNAME}:${uPASSWORD}' | chpasswd"
   sleep 1
-  arch-chroot /mnt bash -c "usermod -aG wheel,audio,video,optical,storage ${USERNAME} >/dev/null 2>&1"
+  arch-chroot /mnt bash -c "usermod -aG wheel,audio,video,optical,storage ${USERNAME} > /dev/null 2>&1"
   tput cuu1
   tput ed
   echo -e "${GREEN}${BOLD}     [*] ${RESET}User Configuration"
