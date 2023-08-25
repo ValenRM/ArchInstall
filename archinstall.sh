@@ -236,7 +236,7 @@ function install_kernel() {
 function create_fstab() {
   trap 'error_handler "$BASH_COMMAND" "$?"' ERR
   echo -e "${YELLOW}${BOLD}[*] ${RESET}Creating FsTab..."
-  genfstab -U /mnt > /mnt/etc/fstab >/dev/null 2>&1
+  genfstab -U /mnt > /mnt/etc/fstab
   sleep 1
   tput cuu1
   tput ed
